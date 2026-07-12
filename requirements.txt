@@ -1,0 +1,17 @@
+# Dependensi dasar (semua OS)
+streamlit>=1.32
+numpy
+pandas
+Pillow
+
+# TensorFlow — GANTI VERSI DI BAWAH agar SAMA (atau sedekat mungkin) dengan
+# versi TensorFlow yang tercetak di notebook Kaggle Anda saat training
+# (lihat output `print(f"TensorFlow Version : {tf.__version__}")` di Cell 2).
+#
+# - Mac Intel      : hapus baris tensorflow-macos & tensorflow-metal di bawah,
+#                     lalu gunakan baris `tensorflow==...` biasa.
+# - Mac Apple Silicon (M1/M2/M3/M4): gunakan tensorflow-macos, tensorflow-metal
+#                     bersifat opsional (hanya mempercepat lewat GPU Metal).
+#
+# Lihat requirements-macos-arm.txt untuk varian khusus Apple Silicon.
+tensorflow==2.15.0

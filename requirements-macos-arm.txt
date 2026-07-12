@@ -1,0 +1,17 @@
+# Khusus MacBook Apple Silicon (chip M1 / M2 / M3 / M4)
+streamlit>=1.32
+numpy
+pandas
+Pillow
+
+# Sesuaikan versi ini dengan versi TensorFlow di Kaggle (Cell 2 notebook).
+tensorflow-macos==2.15.0
+
+# tensorflow-metal (GPU Metal) SENGAJA TIDAK di-install by default.
+# Untuk aplikasi ini kita cuma butuh INFERENSI (bukan training), jadi
+# CPU saja sudah cukup cepat dan JAUH lebih stabil.
+# tensorflow-metal adalah penyebab PALING UMUM dari
+# "Python quit unexpectedly: segmentation fault" di Mac Apple Silicon.
+# Kalau nanti tetap ingin coba GPU, uncomment baris di bawah — tapi
+# kalau muncul segfault lagi, ini baris pertama yang harus dicopot.
+# tensorflow-metal
