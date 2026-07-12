@@ -5,7 +5,7 @@ pandas
 Pillow
 
 # Sesuaikan versi ini dengan versi TensorFlow di Kaggle (Cell 2 notebook).
-tensorflow-macos==2.15.0
+tensorflow-macos==2.20.0
 
 # tensorflow-metal (GPU Metal) SENGAJA TIDAK di-install by default.
 # Untuk aplikasi ini kita cuma butuh INFERENSI (bukan training), jadi

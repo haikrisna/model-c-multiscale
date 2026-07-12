@@ -14,4 +14,4 @@ Pillow
 #                     bersifat opsional (hanya mempercepat lewat GPU Metal).
 #
 # Lihat requirements-macos-arm.txt untuk varian khusus Apple Silicon.
-tensorflow==2.15.0
+tensorflow==2.20.0
