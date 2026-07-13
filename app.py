@@ -74,21 +74,6 @@ with st.sidebar:
             )
 
 # ------------------------------------------------------------------
-# CATATAN DOMAIN GAP (penting untuk transparansi ke penguji/dosen)
-# ------------------------------------------------------------------
-st.warning(
-    "⚠️ **Catatan metodologi:** model dilatih menggunakan crop ROI di sekitar "
-    "area cacat (berdasarkan mask ground-truth pada dataset Severstal), bukan "
-    "gambar penuh. Pada aplikasi demo ini, gambar yang diunggah pengguna "
-    "diklasifikasikan sebagai **gambar penuh** (resize langsung ke "
-    f"{INPUT_SHAPE[0]}×{INPUT_SHAPE[1]}) karena mask tidak tersedia untuk gambar baru "
-    "di dunia nyata. Ini pendekatan wajar untuk keperluan demo/showcase, tetapi "
-    "akurasi pada gambar full-frame bisa berbeda dari akurasi hasil evaluasi "
-    "test set di notebook (yang memakai ROI crop). Sampaikan poin ini secara "
-    "eksplisit apabila demo dipakai saat sidang."
-)
-
-# ------------------------------------------------------------------
 # UPLOAD GAMBAR
 # ------------------------------------------------------------------
 uploaded_file = st.file_uploader("Unggah gambar permukaan baja", type=["jpg", "jpeg", "png"])
