@@ -169,8 +169,109 @@ def preprocess_image(pil_img: Image.Image) -> np.ndarray:
     return arr
 
 
-def predict(model, pil_img: Image.Image) -> Tuple[int, np.ndarray]:
+# ============================================================
+# MITIGASI OUT-OF-DISTRIBUTION (OOD) — LAPISAN TAMBAHAN DI INFERENCE
+# ============================================================
+# LATAR BELAKANG: model ini softmax 4-kelas (Pitting/Crazing/Scratches/
+# Inclusion) TANPA kelas "bukan cacat"/"bukan baja". Softmax WAJIB memilih
+# salah satu dari 4 kelas untuk input apa pun — termasuk foto kucing, orang,
+# dll — karena tidak ada opsi "none of the above" di ruang output model.
+#
+# Dua lapisan mitigasi di bawah ini murni POST-HOC / PRE-FILTER di level
+# INFERENCE (app), TIDAK mengubah bobot model, TIDAK retrain, dan TIDAK
+# menyentuh angka akurasi/F1/ROC-AUC yang sudah dilaporkan di notebook
+# (evaluasi test set notebook masih manggil model.predict() polos tanpa
+# filter ini). Filter ini murni aturan keputusan tambahan di app demo.
+#
+# CATATAN JUJUR (sampaikan juga di sidang kalau ditanya): dua lapisan ini
+# BUKAN out-of-distribution detector yang proper secara riset (itu perlu
+# kelas negatif eksplisit + retrain, atau metode seperti Mahalanobis
+# distance / energy-based OOD detection). Ini heuristik + confidence
+# thresholding sederhana yang cukup untuk demo, dengan keterbatasan:
+#   - Heuristik saturasi/tekstur bisa false-positive (foto baja dengan
+#     pencahayaan aneh ke-reject) atau false-negative (foto grayscale non-
+#     baja lolos, mis. foto aspal/beton close-up).
+#   - Confidence softmax dikenal cenderung overconfident pada input OOD
+#     (neural network umumnya tidak well-calibrated di luar training
+#     distribution), jadi threshold confidence bukan jaminan mutlak.
+# Nilai threshold di bawah ini BELUM di-tuning sistematis — sebelum dipakai
+# di sidang, coba beberapa contoh gambar baja asli & non-baja (kucing,
+# orang, foto acak) lalu sesuaikan angkanya lewat slider di sidebar app.
+
+from ood_heuristics import (
+    SATURATION_THRESHOLD,
+    MIN_TEXTURE_STD,
+    compute_ood_heuristics,
+    heuristic_ood_check,
+)
+
+CONFIDENCE_THRESHOLD = 0.60  # di bawah ini: model dianggap "tidak cukup yakin"
+# CATATAN: SATURATION_THRESHOLD & MIN_TEXTURE_STD sekarang didefinisikan di
+# ood_heuristics.py (biar bisa dipakai calibrate_ood_thresholds.py tanpa
+# perlu load TensorFlow/Streamlit). Untuk kalibrasi threshold ini pakai
+# data asli, jalankan: python calibrate_ood_thresholds.py --help
+
+
+def predict(
+    model,
+    pil_img: Image.Image,
+    apply_heuristic_filter: bool = True,
+    confidence_threshold: float = CONFIDENCE_THRESHOLD,
+    saturation_threshold: float = SATURATION_THRESHOLD,
+    min_texture_std: float = MIN_TEXTURE_STD,
+) -> dict:
+    """
+    Jalankan pipeline prediksi lengkap dengan mitigasi OOD.
+
+    Return dict:
+      status : 'ok' | 'rejected_heuristic' | 'low_confidence'
+      pred_idx : int atau None (None kalau status == 'rejected_heuristic',
+                 karena model TIDAK dipanggil sama sekali)
+      probs : np.ndarray atau None (None kalau status == 'rejected_heuristic')
+      reason : str atau None, penjelasan kalau status != 'ok'
+      ood_stats : dict hasil compute_ood_heuristics (selalu diisi, berguna
+                  untuk ditampilkan di UI debug/sidang)
+    """
+    ood_stats = compute_ood_heuristics(pil_img)
+
+    if apply_heuristic_filter:
+        reject_reason = heuristic_ood_check(
+            pil_img,
+            saturation_threshold=saturation_threshold,
+            min_texture_std=min_texture_std,
+        )
+        if reject_reason:
+            return {
+                'status': 'rejected_heuristic',
+                'pred_idx': None,
+                'probs': None,
+                'reason': reject_reason,
+                'ood_stats': ood_stats,
+            }
+
     x = preprocess_image(pil_img)
     probs = model.predict(x, verbose=0)[0]
     pred_idx = int(np.argmax(probs))
-    return pred_idx, probs
+    max_prob = float(probs[pred_idx])
+
+    if max_prob < confidence_threshold:
+        return {
+            'status': 'low_confidence',
+            'pred_idx': pred_idx,
+            'probs': probs,
+            'reason': (
+                f"Confidence tertinggi cuma {max_prob * 100:.1f}% "
+                f"(ambang {confidence_threshold * 100:.0f}%) — model tidak "
+                "cukup yakin gambar ini salah satu dari 4 jenis cacat yang "
+                "dikenali."
+            ),
+            'ood_stats': ood_stats,
+        }
+
+    return {
+        'status': 'ok',
+        'pred_idx': pred_idx,
+        'probs': probs,
+        'reason': None,
+        'ood_stats': ood_stats,
+    }
